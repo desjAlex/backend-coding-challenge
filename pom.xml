@@ -8,7 +8,7 @@
     <artifactId>backend-coding-challenge</artifactId>
     <version>1.0-SNAPSHOT</version>
 
-    <packaging>war</packaging>
+    <packaging>pom</packaging>
     
     <build>
         <pluginManagement>
