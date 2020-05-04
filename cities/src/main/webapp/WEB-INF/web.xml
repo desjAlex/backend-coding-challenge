@@ -10,6 +10,6 @@
 
     <servlet-mapping>
         <servlet-name>CitySuggestionServlet</servlet-name>
-        <url-pattern>suggestions</url-pattern>
+        <url-pattern>/suggestions</url-pattern>
     </servlet-mapping>
 </web-app>

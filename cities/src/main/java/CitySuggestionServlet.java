@@ -4,7 +4,6 @@ import com.google.gson.GsonBuilder;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -24,12 +23,8 @@ public class CitySuggestionServlet extends HttpServlet
             e.printStackTrace();
         }
     }
-    
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException 
-    {
 
-    }
-
+    @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException 
     {
         PrintWriter out = response.getWriter();
@@ -45,7 +40,7 @@ public class CitySuggestionServlet extends HttpServlet
         {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         }
-        else if (queryLatitude != null && queryLongitude != null)
+        else if (queryLatitude != null && !queryLatitude.isEmpty() && queryLongitude != null && !queryLongitude.isEmpty())
         {
             try 
             {
