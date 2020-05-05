@@ -36,11 +36,6 @@ public class RadixTree<T> implements Iterable<T>
     {
         root = new RadixNode<>();
     }
-    
-    private RadixTree(RadixNode<T> root)
-    {
-        this.root = root;
-    }
 
     /**
      * Add a value to the tree with the specified key.
@@ -48,7 +43,7 @@ public class RadixTree<T> implements Iterable<T>
      * @param key The <code>String</code> used to locate the value in the tree.
      * @param value The value to be stored.
      * @return <code>true</code> if the contents of the tree are changed based on this action, <code>false</code> otherwise.
-     * @throws IllegalArgumentException If a <code>null</code> value is provided, or the key is out of range in the current view.
+     * @throws IllegalArgumentException If a <code>null</code> value is provided
      * @throws NullPointerException If <code>null</code> is provided as the key.
      */
     public boolean add(String key, T value) throws IllegalArgumentException, NullPointerException
@@ -67,16 +62,13 @@ public class RadixTree<T> implements Iterable<T>
             else if (key.startsWith(prefix))
             {
                 key = key.substring(prefix.length());
+                cursor = cursor.getChild(key);
             }
             else
             {
                 int overlap = cursor.radixOverlap(key);
-
-                key = key.substring(overlap);
                 cursor = cursor.split(overlap);
             }
-            
-            cursor = cursor.getChild(key);
             
         } while (!key.isEmpty());
         
@@ -84,17 +76,16 @@ public class RadixTree<T> implements Iterable<T>
     }
 
     /**
-     * Find all values whose keys begin with the provided key.
+     * Find all values whose keys begin with the provided key. Results will be returned in alphabetical order.
      * 
      * @param key The <code>String</code> used to locate the values in the tree.
      * @return A list containing the values, empty if none were found. 
-     * @throws IllegalArgumentException If the search key is out of range in the current view.
      * @throws NullPointerException If <code>null</code> is provided as the key.
      */
-    public List<T> getAll(String key) throws IllegalArgumentException, NullPointerException
+    public List<T> getAll(String key) throws NullPointerException
     {
         key = clean(key);
-        RadixNode<T> keyMatch = getNode(key);
+        RadixNode<T> keyMatch = getNodePartial(key);
         
         if (keyMatch == null)
         {
@@ -107,18 +98,40 @@ public class RadixTree<T> implements Iterable<T>
     }
 
     /**
+     * Detects whether a specified value is contained in the tree with a certain key.
+     *
+     * @param key The <code>String</code> used to locate the value in the tree.
+     * @param value The value in question.
+     * @return <code>true</code> if the value is found at this position, <code>false</code> otherwise.
+     * @throws NullPointerException If <code>null</code> is provided as the key.
+     */
+    public boolean contains(String key, T value) throws NullPointerException
+    {
+        key = clean(key);
+        RadixNode<T> keyMatch = getNodeExact(key);
+
+        if (keyMatch == null)
+        {
+            return false;
+        }
+        else
+        {
+            return keyMatch.contains(value);
+        }
+    }
+
+    /**
      * Removes the matching value in the tree found at the given key, if it exists.
      * 
      * @param key The <code>String</code> used to locate the value in the tree.
      * @param value The value to be removed.
      * @return <code>true</code> if the contents of the tree are changed based on this action, <code>false</code> otherwise.
-     * @throws IllegalArgumentException If a <code>null</code> value is provided, or the key is out of range in the current view.
      * @throws NullPointerException If <code>null</code> is provided as the key.
      */
-    public boolean remove(String key, T value) throws IllegalArgumentException, NullPointerException
+    public boolean remove(String key, T value) throws NullPointerException
     {
         key = clean(key);
-        RadixNode<T> keyMatch = getNode(key);
+        RadixNode<T> keyMatch = getNodePartial(key);
         
         if (keyMatch == null)
         {
@@ -127,27 +140,6 @@ public class RadixTree<T> implements Iterable<T>
         else
         {
             return keyMatch.tryRemove(value);
-        }
-    }
-
-    /**
-     * Generates a view of this tree that is rooted at one of its descendents. This view is backed by the current
-     * tree, so any changes made to either will be visible in the other. 
-     * 
-     * @param fromKey The <code>String</code> that locates the root of the subtree. 
-     * @return A new <code>Radix Tree</code> rooted at the node matching the key.
-     * @throws NullPointerException If <code>null</code> is provided as the key.
-     */
-    public RadixTree<T> subTree(String fromKey) throws IllegalArgumentException, NullPointerException
-    {
-        RadixNode<T> subRoot = getNode(fromKey);
-        if (subRoot == null)
-        {
-            return null;
-        }
-        else
-        {
-            return new RadixTree<>(subRoot);
         }
     }
 
@@ -163,15 +155,17 @@ public class RadixTree<T> implements Iterable<T>
         return new RadixIterator();
     }
     
-    private String clean(String dirtyKey)
+    private String clean(String dirtyKey) throws NullPointerException
     {
         // Normalize case, remove all illegal characters, and trim whitespace. 
         return dirtyKey.toLowerCase().replaceAll("[^a-z]", " ").trim();
     }
     
-    private RadixNode<T> getNode(String key) throws NullPointerException
+    private RadixNode<T> getNodePartial(String key) throws NullPointerException
     {
         // Returns the node matching the provided key, or null if one doesn't exist.
+        // Matches can be partial, as in the node may only start with the search key, it needs not be a full match.
+        // This is useful for finding all entries for a partial search key.
         RadixNode<T> cursor = root;
         do
         {
@@ -192,6 +186,33 @@ public class RadixTree<T> implements Iterable<T>
             }
         } while (!key.isEmpty());
         
+        return null;
+    }
+
+    private RadixNode<T> getNodeExact(String key) throws NullPointerException
+    {
+        // Returns the node matching the provided key, or null if one doesn't exist.
+        // Matches must be complete, the search key must exactly match a node.
+        RadixNode<T> cursor = root;
+        do
+        {
+            String radix = cursor.prefix;
+
+            if (key.equals(radix))
+            {
+                return cursor;
+            }
+            else if (key.startsWith(radix))
+            {
+                key = key.substring(radix.length());
+                cursor = cursor.getChild(key);
+            }
+            else
+            {
+                break;
+            }
+        } while (!key.isEmpty());
+
         return null;
     }
 
@@ -249,16 +270,23 @@ public class RadixTree<T> implements Iterable<T>
                 {
                     valueIndex = 0;
                     
-                    if (cursor.countChildren() > 0 && childIndex < 27)
+                    if (childIndex < 27)
                     {
-                        for (; childIndex < 27; childIndex++)
+                        if (cursor.countChildren() > 0)
                         {
-                            if (cursor.children.get(childIndex) != null)
+                            for (; childIndex < 27; childIndex++)
                             {
-                                cursor = cursor.children.get(childIndex);
-                                childIndex = 0;
-                                break;
+                                if (cursor.children.get(childIndex) != null)
+                                {
+                                    cursor = cursor.children.get(childIndex);
+                                    childIndex = 0;
+                                    break;
+                                }
                             }
+                        }
+                        else
+                        {
+                            childIndex = 27;
                         }
                     }
                     else
@@ -314,6 +342,12 @@ public class RadixTree<T> implements Iterable<T>
             }
         }
         
+        private boolean contains(T value)
+        {
+            return values.contains(value);
+            
+        }
+        
         private boolean tryRemove(T value)
         {
             // If the value is stored in this node, remove it.
@@ -348,7 +382,7 @@ public class RadixTree<T> implements Iterable<T>
                         }
                     }
                 }
-                else if (childCount == 0)
+                else if (childCount == 0 && parent != null)
                 {
                     parent.removeBranch(prefix);
                     parent.tryMerge();
@@ -361,7 +395,7 @@ public class RadixTree<T> implements Iterable<T>
             // Merge this node into its parent, replacing the parent node object.
             // Merge occurs in this direction since only one child pointer has to be updated, instead of updating the
             // parent pointer of all children if merging occurred downward.
-            if (parent != null)
+            if (parent != null && parent.parent != null)
             {
                 prefix = parent.prefix + prefix;
                 parent = parent.parent;
@@ -505,11 +539,11 @@ public class RadixTree<T> implements Iterable<T>
 
             if (keyChar == ' ')
             {
-                keyIndex = 26;
+                keyIndex = 0;
             }
             else
             {
-                keyIndex = keyChar - 'a';
+                keyIndex = keyChar - 'a' + 1;
             }
 
             if (keyIndex < 0 || keyIndex > 26)

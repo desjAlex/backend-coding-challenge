@@ -68,7 +68,7 @@ public class CitySuggestionServlet extends HttpServlet
         if (qResponse != null)
         {
             response.setContentType("application/json");
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
             responseBody = gson.toJson(qResponse);
         }
         

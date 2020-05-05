@@ -9,12 +9,13 @@ import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 /**
- * A singleton details for an arbitrary number of <code>City</code> objects. 
+ * A singleton containing details for an arbitrary number of <code>City</code> objects. 
  * 
- * This class is backed by a <code>Radix Tree</code>.
+ * This class is backed by a <code>Radix Tree</code> and is protected by a Readers-Writer lock for thread safety.
  */
 public class CityDirectory 
 {
@@ -25,8 +26,9 @@ public class CityDirectory
         try
         {
             CityDirectory.loadFromTSV("/cities_canada-usa.tsv");
+            //CityDirectory.reset();
 
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
             QueryResponse results = CityDirectory.query("Londo", 43.70011, -79.4163);
             String jsonResponse = gson.toJson(results);
             System.out.println(jsonResponse);
@@ -36,6 +38,7 @@ public class CityDirectory
     
     // Singleton instance is instantiated at compile time. 
     private static final RadixTree<City> instance = new RadixTree<>();
+    private static final ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
 
     /**
      * Add a city to the directory.
@@ -45,7 +48,10 @@ public class CityDirectory
      */
     public static boolean add(City city)
     {
-        return instance.add(city.getFullName(), city);
+        rwl.writeLock().lock();
+        boolean addSuccess = instance.add(city.getFullName(), city);
+        rwl.writeLock().unlock();
+        return addSuccess;
     }
 
     /**
@@ -56,7 +62,10 @@ public class CityDirectory
      */
     public static List<City> getAll(String cityName)
     {
-        return instance.getAll(cityName);
+        rwl.readLock().lock();
+        List<City> returnedCities = instance.getAll(cityName);
+        rwl.readLock().unlock();
+        return returnedCities;
     }
 
     /**
@@ -67,7 +76,10 @@ public class CityDirectory
      */
     public static boolean remove(City city)
     {
-        return instance.remove(city.getFullName(), city);
+        rwl.writeLock().lock();
+        boolean removeSuccess = instance.remove(city.getFullName(), city);
+        rwl.writeLock().unlock();
+        return removeSuccess;
     }
 
 
@@ -111,12 +123,31 @@ public class CityDirectory
               BufferedReader br = new BufferedReader(new InputStreamReader(csvStream, StandardCharsets.UTF_8));
               CSVParser parser = new CSVParser(br, CSVFormat.TDF.withQuote(null).withHeader()))
         {
+            rwl.writeLock().lock();
             for (CSVRecord record : parser)
             {
                 City newCity = parseCity(record);
                 instance.add(newCity.getFullName(), newCity);
             }
         }
+        finally
+        {
+            rwl.writeLock().unlock();
+        }
+    }
+
+    /**
+     * Resets the directory by removing all cities it currently contains.
+     */
+    public static void reset()
+    {
+        rwl.writeLock().lock();
+        List<City> allCities = instance.getAll("");
+        for (City city : allCities)
+        {
+            remove(city);
+        }
+        rwl.writeLock().unlock();
     }
     
     private static City parseCity(CSVRecord cityRecord) throws IllegalArgumentException
@@ -244,6 +275,7 @@ public class CityDirectory
             this.score = relevanceScore(city.distanceFrom(qLatitude, qLongitude), city.getPopulation());
         }
 
+        @Override
         public int compareTo(CityResult other)
         {
             return Double.compare(this.score, other.score);

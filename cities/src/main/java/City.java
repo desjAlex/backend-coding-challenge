@@ -14,8 +14,13 @@ public class City
     private final double longitude;
     private final long population;
     
-    public City(String name, String province, String country, double latitude, double longitude, long population)
+    public City(String name, String province, String country, double latitude, double longitude, long population) throws IllegalArgumentException
     {
+        if (Math.abs(latitude) > 90.0 || Math.abs(longitude) > 180.0)
+        {
+            throw new IllegalArgumentException();
+        }
+        
         this.name = name;
         this.province = province;
         this.country = country;
