@@ -5,16 +5,23 @@ import java.util.*;
  * 
  * A Radix Tree is a space-optimized Prefix Tree (Trie). 
  * 
- * Keys are used to traverse the tree, and values are stored in the terminal node of the search. Each node 
+ * Key strings are used to traverse the tree, and values are stored in the terminal node of the search. Each node 
  * contains a prefix string, a "bucket" for storing values, and an array of pointers to the children of that node. This 
  * array has a specific capacity equal to the number of unique permitted characters in a key. In this case, the 26 
- * characters of the alphabet, plus the space character. 
+ * characters of the alphabet plus the space character. 
  * 
  * Traversal begins at the root node, which contains an empty prefix "". The first character in the key determines which 
- * of the children to expand. The child node will contain a non-empty prefix beginning with the character corresponding
- * to its position. If the search key begins with the prefix at this node, this prefix is removed from the search key
- * and search proceeds deeper based on the first character of the shortened string; otherwise, the key does not exist
- * in the tree and the search terminates. 
+ * of the children to expand (if it begins with 'a', expand the child in the array at position 1, if 'b', position 2,
+ * and so on).
+ * 
+ * The child node will contain a non-empty prefix beginning with the character corresponding to its position. If the 
+ * child was in position 'a' of its parent, its prefix must begin with 'a'. The prefix may be this character alone, or 
+ * it may be a longer string that begins with it (such as "art").
+ * 
+ * If the search key begins with the prefix at this node, this prefix is removed from the search key
+ * and search proceeds deeper based on the first character of the shortened string. Say the search key is "artist" and 
+ * this node has prefix "art", then the key is shortened to "ist" and search continues to child node "i" from the current
+ * node. If this node had prefix "ax", then the key "artist" is not contained in the tree, and the search terminates. 
  * 
  * Tree operations occur in O(n) time, where n corresponds to the number of characters in the key. In most instances,
  * actual operations are quicker since nodes often contain a prefix spanning several characters.

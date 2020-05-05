@@ -1,5 +1,3 @@
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -19,23 +17,6 @@ import java.util.stream.Collectors;
  */
 public class CityDirectory 
 {
-
-    
-    public static void main(String[] args)
-    {
-        try
-        {
-            CityDirectory.loadFromTSV("/cities_canada-usa.tsv");
-            //CityDirectory.reset();
-
-            Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
-            QueryResponse results = CityDirectory.query("Londo", 43.70011, -79.4163);
-            String jsonResponse = gson.toJson(results);
-            System.out.println(jsonResponse);
-        }
-        catch (IOException ignored) {}
-    }
-    
     // Singleton instance is instantiated at compile time. 
     private static final RadixTree<City> instance = new RadixTree<>();
     private static final ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
@@ -63,9 +44,9 @@ public class CityDirectory
     public static List<City> getAll(String cityName)
     {
         rwl.readLock().lock();
-        List<City> returnedCities = instance.getAll(cityName);
+        List<City> matchingCities = instance.getAll(cityName);
         rwl.readLock().unlock();
-        return returnedCities;
+        return matchingCities;
     }
 
     /**
@@ -82,10 +63,11 @@ public class CityDirectory
         return removeSuccess;
     }
 
-
     /**
      * Query the directory for cities whose names begin with a specified string. 
      * Results are scored based on population and sorted, then stored as objects specifically suited for JSON serialization. 
+     * 
+     * Results with scores lower than 0.1 are omitted.
      * 
      * @param cityName The search string.
      * @return The response data as a formatted object. 
@@ -99,6 +81,8 @@ public class CityDirectory
      * Query the directory for cities whose names begin with a specified string.
      * Results are scored based on population and distance from a specified position, sorted, 
      * then stored as objects specifically suited for JSON serialization. 
+     * 
+     * Results with scores lower than 0.1 are omitted.
      *
      * @param cityName The search string.
      * @param latitude The latitude of the query position, in degrees.
@@ -262,7 +246,6 @@ public class CityDirectory
             this.name = city.getFullName();
             this.latitude = formatDouble(city.getLatitude());
             this.longitude = formatDouble(city.getLongitude());
-
             this.score = populationScore(city.getPopulation(), populationSum);
         }
         
@@ -271,7 +254,6 @@ public class CityDirectory
             this.name = city.getFullName();
             this.latitude = formatDouble(city.getLatitude());
             this.longitude = formatDouble(city.getLongitude());
-
             this.score = relevanceScore(city.distanceFrom(qLatitude, qLongitude), city.getPopulation());
         }
 

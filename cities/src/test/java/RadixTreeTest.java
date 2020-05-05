@@ -120,6 +120,26 @@ class RadixTreeTest
     }
 
     @Test
+    void getWithSubstring()
+    {
+        RadixTree<String> tree = new RadixTree<>();
+        ArrayList<String> tStrings = new ArrayList<>(1000);
+        for (int i = 0; i < 1000; i++)
+        {
+            String tString = randomString(32, 126, 20, 21);
+            tStrings.add(tString);
+            tree.add(tString, tString);
+        }
+        
+        for (int j = 0; j < 1000; j++)
+        {
+            int subLength = ThreadLocalRandom.current().nextInt(10);
+            String substring = tStrings.get(j).substring(0, subLength);
+            assertTrue(tree.getAll(substring).contains(tStrings.get(j)));
+        }
+    }
+
+    @Test
     void iterator()
     {
         RadixTree<String> tree = new RadixTree<>();
